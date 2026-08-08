@@ -92,7 +92,7 @@ def generate_fortune() -> str:
         raise RuntimeError(
             "GEMINI_API_KEY が未設定です。.env に設定してください（.env.example 参照）。"
         )
-    model_name = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
+    model_name = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 
     today = datetime.datetime.now(JST).strftime("%Y年%m月%d日")
     system_prompt = SYSTEM_PROMPT.replace("{DATE}", today)
