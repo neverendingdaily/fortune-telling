@@ -1,0 +1,58 @@
+name: Daily Fortune Telling to Discord
+
+on:
+  schedule:
+    # 毎日 9:00 JST (= 00:00 UTC) に実行
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "true にすると実際の送信を行わずログ出力のみ行います"
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+
+jobs:
+  generate-and-send:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Determine dry-run mode
+        id: mode
+        env:
+          MANUAL_DRY_RUN: ${{ github.event.inputs.dry_run }}
+          SCHEDULE_DRY_RUN: ${{ vars.DRY_RUN }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            MODE="${MANUAL_DRY_RUN:-true}"
+          else
+            # スケジュール実行時は、リポジトリ変数 DRY_RUN を明示的に "false" に
+            # 設定するまでは安全側 (dry-run) で動作します。
+            # 設定場所: Settings > Secrets and variables > Actions > Variables
+            MODE="${SCHEDULE_DRY_RUN:-true}"
+          fi
+          echo "dry_run=$MODE" >> "$GITHUB_OUTPUT"
+
+      - name: Generate fortune and send to Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          if [ "${{ steps.mode.outputs.dry_run }}" = "false" ]; then
+            python fortune_and_send.py
+          else
+            python fortune_and_send.py --dry-run
+          fi
